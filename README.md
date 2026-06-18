@@ -2,7 +2,7 @@
 
 A full-stack web app designed to help users track alcohol consumption, monitor blood alcohol concentration (BAC), connect with friends, and make informed decisions about drinking habits.
 
-**Live Demo:** https://gen-lang-client-0213350901.web.app
+**Live Demo:** https://alco-trax.vercel.app/
 
 ![Alcotrax Dashboard](./screenshots/dashboard.png)
 
