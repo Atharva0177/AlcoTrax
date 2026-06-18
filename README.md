@@ -196,15 +196,16 @@ Create `.env.local` in the project root:
 
 ```env
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=AIzaSyDxxx...
-VITE_FIREBASE_AUTH_DOMAIN=gen-lang-client-0213350901.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=gen-lang-client-0213350901
-VITE_FIREBASE_STORAGE_BUCKET=gen-lang-client-0213350901.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abcdef123456
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+
 
 # Google Gemini API
-VITE_GEMINI_API_KEY=AIzaSyDxxx...
+VITE_GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ### For Production (Hosting Platforms)
@@ -585,30 +586,35 @@ firebase deploy
 
 ### Dashboard — Real-time Session Tracking
 ![Dashboard](./screenshots/dashboard.png)
+
 *Main interface for logging drinks and monitoring live BAC calculations in real-time*
 
 ---
 
 ### Analytics — Weekly Stats & Insights
 ![Analytics](./screenshots/analytics.png)
+
 *View your weekly consumption trends, charts, and insights against your daily/weekly limits*
 
 ---
 
 ### Friends — Search & Connect
 ![Friends](./screenshots/friends.png)
+
 *Search friends by name or friend code, view friend profiles, and manage your friend list*
 
 ---
 
 ### Activity Feed — Social Engagement
 ![Feed](./screenshots/feed.png)
+
 *See friends' completed sessions with engagement buttons (like, comment, share), incoming friend requests, and milestones*
 
 ---
 
 ### Profile — Settings & Safety
 ![Profile](./screenshots/profile.png)
+
 *Manage your profile, set consumption limits, add medical info (blood type, allergies), emergency contacts, and publish your profile*
 
 ---
@@ -617,14 +623,8 @@ firebase deploy
 
 This project is licensed under the MIT License — see LICENSE file for details.
 
----
 
-## 📞 Support
 
-For questions or issues:
-- Open an issue on [GitHub](https://github.com/Atharva0177/AlcoTrax/issues)
-- Check existing docs in `docs/` folder
-- Review Firestore rules in `firestore.rules`
 
 ---
 
@@ -637,28 +637,3 @@ Built with:
 - 🤖 Google Gemini AI
 - 💕 Community feedback
 
----
-
-**Made with ❤️ for mindful consumption.**
-
----
-
-### Quick Start (TL;DR)
-
-```bash
-# Clone
-git clone https://github.com/Atharva0177/AlcoTrax.git && cd alcotrax
-
-# Setup
-npm install
-echo "VITE_FIREBASE_API_KEY=..." > .env.local
-echo "VITE_GEMINI_API_KEY=..." >> .env.local
-
-# Run
-npm run dev
-
-# Deploy
-npm run build && firebase deploy
-```
-
-Visit: https://gen-lang-client-0213350901.web.app
