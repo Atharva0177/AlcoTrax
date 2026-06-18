@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    match /admins/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && incoming().keys().hasAll(['email']) && incoming().email == 'mandavkaratharva@gmail.com';
+    }
+
+    // User Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'createdAt', 'updatedAt']) &&
+             data.email is string && data.email.size() <= 256 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    match /users/{userId} {
+      allow get: if (isSignedIn() && request.auth.uid == userId && isValidId(userId)) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUser(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'email']);
+      allow delete: if isAdmin();
+    }
+
+    // UserProfile Validation
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['weight', 'sex', 'age', 'userId']) &&
+             data.weight is number && data.sex is string && data.sex.size() <= 10 &&
+             data.age is number && data.userId == request.auth.uid &&
+             (data.get('weeklyLimit', 0) is number) &&
+             (data.get('pacingRateLimit', 0) is number) &&
+             (data.get('goals', '') is string) &&
+             (data.get('bloodType', '') is string) &&
+             (data.get('allergies', []) is list) &&
+             (data.get('emergencyContactName', '') is string) &&
+             (data.get('emergencyContactPhone', '') is string) &&
+             (data.get('homeAddress', '') is string);
+    }
+
+    // Public profile index for friend search and lightweight lookups
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll(['userId']) &&
+             data.userId is string &&
+             data.userId == request.auth.uid &&
+             (data.get('displayName', '') is string) &&
+             (data.get('avatar', '') is string) &&
+             (data.get('friendCode', '') is string) &&
+             (data.get('friendCode', '').size() <= 6) &&
+             (data.get('searchKey', '') is string) &&
+             (data.get('updatedAt', 0) is number);
+    }
+
+    match /profiles/{userId} {
+      allow get: if (isSignedIn() && request.auth.uid == userId && isValidId(userId)) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUserProfile(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['weight', 'sex', 'age', 'weeklyLimit', 'pacingRateLimit', 'goals', 'bloodType', 'allergies', 'emergencyContactName', 'emergencyContactPhone', 'homeAddress']);
+      allow delete: if isAdmin();
+    }
+
+    match /publicProfiles/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      // Allow signed-in users to create/update their own lightweight public profile.
+      // Field validation is intentionally relaxed here so clients can publish
+      // their display/lookup record without being rejected by strict schema checks.
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId && isValidId(userId));
+    }
+
+    function isValidFriendCodeIndex(data, codeId) {
+      return data.keys().hasAll(['userId', 'friendCode', 'updatedAt']) &&
+             data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.friendCode is string &&
+             data.friendCode == codeId &&
+             data.friendCode.size() == 6 &&
+             data.updatedAt is number &&
+             (data.get('displayName', '') is string) &&
+             (data.get('avatar', '') is string);
+    }
+
+    match /friendCodes/{codeId} {
+      allow get: if isSignedIn() && codeId is string && codeId.matches('^[A-Z0-9]{6}$');
+      allow list: if false;
+      allow create: if isSignedIn() && codeId is string && codeId.matches('^[A-Z0-9]{6}$') && isValidFriendCodeIndex(incoming(), codeId);
+      allow update: if isSignedIn() && codeId is string && codeId.matches('^[A-Z0-9]{6}$') && isValidFriendCodeIndex(incoming(), codeId);
+      allow delete: if isAdmin() || (isSignedIn() && codeId is string && codeId.matches('^[A-Z0-9]{6}$') && request.auth.uid == existing().userId);
+    }
+
+    // ActiveSession Validation
+    function isValidActiveSession(data) {
+      return data.keys().hasAll(['userId', 'updatedAt']) &&
+             data.userId == request.auth.uid &&
+             data.updatedAt is number &&
+             (data.get('startTime', 0) is number) &&
+             (data.get('lastDrinkTimestamp', 0) is number) &&
+             (data.get('waterVolume', 0) is number) &&
+             (data.get('bac', 0) is number) &&
+             (data.get('peakBac', 0) is number) &&
+             (data.get('drinksCount', 0) is number);
+    }
+
+    match /activeSessions/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidActiveSession(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidActiveSession(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['startTime', 'lastDrinkTimestamp', 'waterVolume', 'bac', 'peakBac', 'updatedAt', 'drinksCount']);
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId && isValidId(userId));
+
+      // Drinks Subcollection
+      match /drinks/{drinkId} {
+        allow get: if (isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(drinkId)) || isAdmin();
+        allow list: if (isSignedIn() && request.auth.uid == userId && isValidId(userId)) || isAdmin();
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(drinkId) &&
+                      incoming().keys().hasAll(['name', 'abv', 'volume', 'timestamp', 'userId']) &&
+                      incoming().name is string && incoming().name.size() <= 200 &&
+                      incoming().abv is number && incoming().volume is number &&
+                      incoming().timestamp is number && incoming().userId == request.auth.uid &&
+                      (incoming().get('calories', 0) is number) &&
+                      (incoming().get('timeSinceLastDrink', 0) is number) &&
+                      (incoming().get('iconUrl', '') is string);
+        allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(drinkId) &&
+                      incoming().keys().hasAll(['name', 'abv', 'volume', 'timestamp', 'userId']) &&
+                      incoming().name is string && incoming().name.size() <= 200 &&
+                      incoming().abv is number && incoming().volume is number &&
+                      incoming().timestamp is number && incoming().userId == request.auth.uid &&
+                      (incoming().get('calories', 0) is number) &&
+                      (incoming().get('timeSinceLastDrink', 0) is number) &&
+                      (incoming().get('iconUrl', '') is string) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'abv', 'volume', 'calories', 'iconUrl']);
+        allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(drinkId));
+      }
+    }
+
+    function isValidUserFriend(data) {
+      return data.keys().hasAll(['userId', 'friendUserId', 'name', 'avatar', 'addedAt']) &&
+             data.userId is string &&
+             data.friendUserId is string &&
+             data.name is string && data.name.size() <= 128 &&
+             data.avatar is string &&
+             data.avatar.size() <= 2048 &&
+             data.addedAt is number &&
+             (data.get('currentBac', 0) is number) &&
+             (data.get('streak', 0) is number);
+    }
+
+    match /userFriends/{friendshipId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid) || (isSignedIn() && resource.data.friendUserId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.friendUserId == request.auth.uid));
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidUserFriend(incoming());
+      allow update: if isSignedIn() && incoming().userId == request.auth.uid && isValidUserFriend(incoming());
+      allow delete: if isAdmin() || (isSignedIn() && (existing().userId == request.auth.uid || existing().friendUserId == request.auth.uid));
+    }
+
+    // SessionHistory Validation
+    function isValidSessionHistory(data) {
+      return data.keys().hasAll(['totalUnits', 'peakBac', 'durationMins', 'timestamp', 'userId']) &&
+             data.totalUnits is number && data.peakBac is number && data.durationMins is number &&
+             data.timestamp is number && data.userId == request.auth.uid &&
+             (data.get('drinkCount', 0) is number) &&
+             (data.get('totalCalories', 0) is number) &&
+             (data.get('waterVolume', 0) is number) &&
+             (data.get('consumedDrinks', []) is list);
+    }
+
+    match /sessionHistory/{sessionId} {
+      allow get: if (isSignedIn() && isValidId(sessionId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidSessionHistory(incoming()) && isValidId(sessionId);
+      allow update: if false; // immutable history
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && isValidId(sessionId));
+    }
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase config files with API keys
+firebase-applet-config.json
+firebase-blueprint.json
+metadata.json
+functions/
